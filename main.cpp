@@ -214,8 +214,137 @@ int main(int argc, char *argv[])
     double *xi = new double[n];
     double *deltaPhi = new double[n];
     
+    int n3 = 1000; // Antall Monte Carlo sykluser
+    int heltall = 5; // De "heltall" første egenverdiene i intervallet jeg vil se på
+
+    // Lager matrise som skal inneholde egenverdier
+    double **egenverdiMatrise = new double*[n3];
+    double **xiNullMatrise = new double*[n3];
+    for (int i=0;i<n3;i++) {
+        egenverdiMatrise[i] = new double[heltall];
+        xiNullMatrise[i] = new double[heltall];
+    } 
+	
+    // Tabellene 4.2, 4.3, 4.6, 4.7 og 4.8
+    // Kjør med n3 = 30 Monte Carlo-sykluser for tabellene 4.6-4.8
+    // Kjør med n3 = 1000 Monte Carlo-sykluser for tabellene 4.2 og 4.3
+    for (int ii=0; ii<n3; ii++) {
+      // Grid for egenverdier
+      omegaMin = 0.9; // Nedre grense
+      omegaMax = 1.0 + ((double) ii)/((double) (n3 - 1)); // Øvre grense 
+      omegaStep = (omegaMax - omegaMin)/((double) (N-1));
+      for (int i=0; i<N; i++) {
+        omega2[i] = omegaMin + i*omegaStep;
+      }  
+      // Sjekker om det er egenverdier til stede
+      eigenvalues(stepWhenPhiStrikes, rStep, xiMax, n, N, a, b, c, d, aTilde, bTilde, cTilde, dTilde, omegaTerm, bTerm, bBarTerm, xi, deltaPhi, xiZero, omega2, gamma_p);
+
+      // Teller hvor mange egenverdier som er funnet i det valgte intervallet
+      tellerEgenverdier(N, antallEgenverdier, xiZero);
+
+      // Definerer vektor som skal inneholde alle egenverdiene som er funnet i intervallet
+      double *egenverdiVektor = new double[antallEgenverdier];
+      double *besteXiNullVektor = new double[antallEgenverdier];
+    
+      // Finner egenverdiene innenfor ønsket presisjon, og tar vare på de
+      finnerEgenverdier(stepWhenPhiStrikes, xiMax, rStep, antallEgenverdier, N, n, xiZero, omega2, a, b, c, d, bTerm, aTilde, bTilde, cTilde, dTilde, bBarTerm, omegaTerm, gamma_p, xi, deltaPhi, egenverdiVektor, besteXiNullVektor);
+       
+       for (int jj=0; jj<heltall; jj++) {
+         egenverdiMatrise[ii][jj] = egenverdiVektor[jj];
+         xiNullMatrise[ii][jj] = besteXiNullVektor[jj];
+       }
+      
+       delete [] egenverdiVektor;
+       delete [] besteXiNullVektor;
+    }
+    
+    sum1 = 0.0;
+    sum2 = 0.0;
+    double *egenverdiVektor = new double[heltall];
+    double *besteXiNullVektor = new double[heltall];
+
+    for (int jj=0; jj<heltall; jj++) {
+      for (int ii=0; ii<n3; ii++) {
+        sum1 = sum1 + egenverdiMatrise[ii][jj];
+        sum2 = sum2 + xiNullMatrise[ii][jj];
+      }
+      egenverdiVektor[jj] = sum1/((double) n3);
+      besteXiNullVektor[jj] = sum2/((double) n3);
+      sum1 = 0.0;
+      sum2 = 0.0;
+    }
+    for (int i=0;i<heltall;i++) {
+      ofile << setw(15) << setprecision(20) << egenverdiVektor[i] << "\t";
+      ofile << setw(15) << setprecision(20) << besteXiNullVektor[i] << endl;
+    }
+    // Slutt tabellene 4.2, 4.3, 4.6, 4.7 og 4.8
+	
+    /*
+    // Tabell 4.5
+    // Kjør med n3 = 1000 Monte Carlo-sykluser
+    double *tabellFireFem = new double[2];
+    for (int l=0; l<2; l++) {
+      xiMax = 10.0*xiMax;
+      for (int ii=0; ii<n3; ii++) {
+        // Grid for egenverdier
+        omegaMin = 0.0; // Nedre grense
+        omegaMax = 0.005 + ((double) ii)/((double) (n3 - 1)); // Øvre grense 
+        omegaStep = (omegaMax - omegaMin)/((double) (N-1));
+        for (int i=0; i<N; i++) {
+          omega2[i] = omegaMin + i*omegaStep;
+        }  
+        // Sjekker om det er egenverdier til stede
+        eigenvalues(stepWhenPhiStrikes, rStep, xiMax, n, N, a, b, c, d, aTilde, bTilde, cTilde, dTilde, omegaTerm, bTerm, bBarTerm, xi, deltaPhi, xiZero, omega2, gamma_p);
+
+        // Teller hvor mange egenverdier som er funnet i det valgte intervallet
+        tellerEgenverdier(N, antallEgenverdier, xiZero);
+
+        // Definerer vektor som skal inneholde alle egenverdiene som er funnet i intervallet
+        double *egenverdiVektor = new double[antallEgenverdier];
+        double *besteXiNullVektor = new double[antallEgenverdier];
+    
+        // Finner egenverdiene innenfor ønsket presisjon, og tar vare på de
+        finnerEgenverdier(stepWhenPhiStrikes, xiMax, rStep, antallEgenverdier, N, n, xiZero, omega2, a, b, c, d, bTerm, aTilde, bTilde, cTilde, dTilde, bBarTerm, omegaTerm, gamma_p, xi, deltaPhi, egenverdiVektor, besteXiNullVektor);
+       
+         for (int jj=0; jj<heltall; jj++) {
+           egenverdiMatrise[ii][jj] = egenverdiVektor[jj];
+           xiNullMatrise[ii][jj] = besteXiNullVektor[jj];
+         }
+         delete [] egenverdiVektor;
+         delete [] besteXiNullVektor;
+      }
+      sum1 = 0.0;
+      sum2 = 0.0;
+      double *egenverdiVektor = new double[heltall];
+      double *besteXiNullVektor = new double[heltall];
+
+      for (int jj=0; jj<heltall; jj++) {
+        for (int ii=0; ii<n3; ii++) {
+          sum1 = sum1 + egenverdiMatrise[ii][jj];
+          sum2 = sum2 + xiNullMatrise[ii][jj];
+        }
+        egenverdiVektor[jj] = sum1/((double) n3);
+        besteXiNullVektor[jj] = sum2/((double) n3);
+        sum1 = 0.0;
+        sum2 = 0.0;
+      }
+      tabellFireFem[l] = egenverdiVektor[0];
+      delete [] egenverdiVektor;
+      delete [] besteXiNullVektor;     
+    }
+
+    xiMax = rStep; // Tilbakestiller perturbasjonen
+
+    for (int i=0;i<2;i++) {
+      ofile << setw(15) << setprecision(20) << tabellFireFem[i] << endl;
+    }
+    // Slutt tabell 4.5
+    */
+	
+    /*
+    // Tabell 4.4
     // Grid for egenverdier
-    omegaMin = 0; // Nedre grense
+    omegaMin = 0.0; // Nedre grense
     omegaMax = 0.005; // Øvre grense
     omegaStep = (omegaMax - omegaMin)/((double) (N-1)); 
     for (int i=0; i<N; i++) {
@@ -230,18 +359,24 @@ int main(int argc, char *argv[])
 
     // Definerer vektor som skal inneholde alle egenverdiene som er funnet i intervallet
     double *egenverdiVektor = new double[antallEgenverdier];
+    double *besteXiNullVektor = new double[antallEgenverdier];
     
     // Finner egenverdiene innenfor ønsket presisjon, og tar vare på de
-    finnerEgenverdier(stepWhenPhiStrikes, xiMax, rStep, antallEgenverdier, N, n, xiZero, omega2, a, b, c, d, bTerm, aTilde, bTilde, cTilde, dTilde, bBarTerm, omegaTerm, gamma_p, xi, deltaPhi, egenverdiVektor);
+    finnerEgenverdier(stepWhenPhiStrikes, xiMax, rStep, antallEgenverdier, N, n, xiZero, omega2, a, b, c, d, bTerm, aTilde, bTilde, cTilde, dTilde, bBarTerm, omegaTerm, gamma_p, xi, deltaPhi, egenverdiVektor, besteXiNullVektor);
 
     // Skjekker om den første egenverdien er grunn-egenverdien. Hvis så er tilfellet, kollapser stjernen ikke.
     finnerEgenverdiNummer(n, antallEgenverdier, stepWhenPhiStrikes, rStep, xiMax, xi, deltaPhi, egenverdiVektor, a, b, c, d, bTerm, aTilde, bTilde, cTilde, dTilde, bBarTerm, omegaTerm, gamma_p);
+    
+    // Slutt tabell 4.4
+    */
 
     // Stenger ut-fil
     ofile.close();
 
     // Sletter vektorer
-
+    //delete [] egenverdiVektor;
+    //delete [] besteXiNullVektor;
+	
     return 0;
 }
 
